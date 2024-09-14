@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, OrbitControls, Environment, AccumulativeShadows, RandomizedLight } from '@react-three/drei';
 import AuthButtons from '../components/AuthButtons';
+import MicButton from '../components/Mic';
 
 
 
@@ -66,6 +67,10 @@ function ThreeScene({ modelUrl }) {
   );
 }
 
+function handleMicClick() {
+  console.log('Mic clicked');
+}
+
 export default function Home() {
   const [modelUrl, setModelUrl] = useState('');
 
@@ -83,10 +88,10 @@ export default function Home() {
       <div className="w-[556px] h-[513px]">
         {modelUrl && <ThreeScene modelUrl={modelUrl} />}
       </div>
-      <div className="w-[463px] h-[513px] bg-green-500"></div>
-      <div className="bg-red-500 text-3xl">
-  Test Tailwind
-</div>
+      <div className="w-[463px] h-[513px] bg-gray-300 rounded-tr-[100px] rounded-bl-[100px] ml-[60px]"></div>
+    </div>
+    <div>
+    <MicButton onClick={handleMicClick} />
     </div>
     
 </div>
