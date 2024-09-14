@@ -4,7 +4,8 @@ import os
 import requests
 from dotenv import load_dotenv
 import logging
-import base64
+from agent import agent, InitiateChitChatDialogue, ChitChatDialogueMessage
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,6 +26,22 @@ BASETEN_MODEL_URL = "https://model-7wlmmd7q.api.baseten.co/production/async_pred
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.post("/dialogue")
+async def dialogue(request: Request):
+    try:
+        payload = await request.json()
+        user_message = payload.get("message")
+        if not user_message:
+            raise HTTPException(status_code=400, detail="Message is required")
+
+        # Process the message using the agent
+        response = await agent.process_message(user_message)
+        return JSONResponse(content={"response": response})
+    except Exception as e:
+        logger.error(f"Error processing dialogue: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @app.post("/transcribe")
@@ -88,5 +105,4 @@ async def webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
 
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     uvicorn.run(app, host="0.0.0.0", port=8000)
