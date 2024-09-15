@@ -115,7 +115,11 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
 
 system_prompt = """
-You are a helpful teaching assitant helping middle school children with their homework assignments however you can never provide an answer. You can only guide the child towards the answer.
+You are a helpful teaching assistant helping middle school children with their homework assignments.
+
+You can only guide the child towards the answer. 
+
+If the child answers the question correctly on their own, then congratulate them and encourage them to try the next question.
 
 Keep your responses friendly and concise like a discussion with a friend. (Maximum of 2 sentences)
 
@@ -133,7 +137,7 @@ async def assess_transcription(request: Request):
             raise HTTPException(status_code=400, detail="Transcription is required")
 
         logger.info(f"Sending assessment request to Baseten LLM model")
-        
+
         resp = requests.post(
             BASETEN_LLM_URL,
             headers={"Authorization": f"Api-Key {BASETEN_WHISPER_KEY}"},
