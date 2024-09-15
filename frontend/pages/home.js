@@ -12,7 +12,49 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from 'next/router';
 
 
-
+const questionMapping = {
+  "Math": {
+    "HW 1": {
+      "Question #1": "Simplify this expression 3(2x+4)-5x",
+      "Question #2": "Solve for x: 2x + 5 = 13",
+      "Question #3": "Find the slope of the line passing through points (2,3) and (4,7)"
+    },
+    "HW 2": {
+      "Question #1": "Factor the expression: x^2 + 5x + 6",
+      "Question #2": "Solve the quadratic equation: x^2 - 4x - 5 = 0",
+      "Question #3": "Find the area of a circle with radius 5 units"
+    },
+    "HW 3": {
+      "Question #1": "Simplify the radical expression: √(32)",
+      "Question #2": "Solve the system of equations: 2x + y = 7, x - y = 1",
+      "Question #3": "Find the volume of a sphere with radius 3 units"
+    }
+  },
+  "Chemistry": {
+    "Assignment #1": {
+      "Question #1": "Balance this chemical equation: H2 + O2 -> H2O",
+      "Question #2": "Calculate the molarity of a solution containing 4 grams of NaOH in 500 mL of solution",
+      "Question #3": "Name the compound: Fe2O3"
+    },
+    "Assignment #2": {
+      "Question #1": "What is the pH of a 0.01 M HCl solution?",
+      "Question #2": "Draw the Lewis structure for CO2",
+      "Question #3": "Calculate the empirical formula of a compound that is 40% carbon, 6.7% hydrogen, and 53.3%"
+    },
+    "Assignment #3": {
+      "Question #1": "Define the term 'isotope'",
+      "Question #2": "What is the difference between an exothermic and endothermic reaction?",
+      "Question #3": "Calculate the number of moles in 50 grams of CaCO3"
+    }
+  },
+  "English": {
+    "Assignment": {
+      "Question #1": "Analyze the main theme in Shakespeare's 'Romeo and Juliet'",
+      "Question #2": "Compare and contrast the writing styles of Ernest Hemingway and F. Scott Fitzgerald",
+      "Question #3": "Explain the significance of the symbolism in George Orwell's '1984'"
+    }
+  }
+};
 
 function Model({ url, animationUrl, animationSpeed = 1 }) {
   const fbx = useLoader(FBXLoader, url);
@@ -111,9 +153,26 @@ export default function Home() {
   const router = useRouter();
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const [question, setQuestion] = useState('');
+  const [conversationContext, setConversationContext] = useState('');
 
-  
 
+
+  useEffect(() => {
+  if (selections.every(selection => selection !== '')) {
+    const newQuestion = generateQuestion(selections);
+    setQuestion(newQuestion);
+    
+    // Clear messages and reset conversationContext with the new question
+    setMessages([]);
+    setConversationContext(`Question: ${newQuestion}\n\n`);
+  }
+}, [selections]);
+
+  const generateQuestion = (selections) => {
+    const [subject, assignment, questionNumber] = selections;
+    return questionMapping[subject]?.[assignment]?.[questionNumber] || "Question not found";
+  };
   
 
   const handleMicClick = async () => {
@@ -164,9 +223,9 @@ export default function Home() {
       console.log('API response:', result.result.text);
       if (result.result.text) {
         // Update messages state with the new transcription
-        
+        setConversationContext(prevContext => prevContext + `Student Response: ${result.result.text}\n\n`);
         // Call assess endpoint with the transcription
-        await assessTranscription(result.result.text);
+        await assessTranscription(conversationContext + `Student Response: ${result.result.text}\n\n`);
       } else {
         console.error('No transcription text in API response');
         setMessages(prevMessages => [...prevMessages, "Error: No transcription received"]);
@@ -179,13 +238,15 @@ export default function Home() {
   
   const assessTranscription = async (transcription) => {
     console.log('Sending audio to asessing...');
+    console.log('Conversation context:', transcription);
+
     try {
       const response = await fetch('http://localhost:8000/assess', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ transcription }),
+        body: JSON.stringify({transcription}),
       });
   
       if (!response.ok) {
@@ -198,6 +259,7 @@ export default function Home() {
       if (result.assessment) {
         // Update messages state with the assessment
         setMessages(prevMessages => [...prevMessages, `Assessment: ${result.assessment}`]);
+        setConversationContext(prevContext => prevContext + `Assessment: ${result.assessment}\n\n`);
       } else {
         console.error('No assessment in API response');
         setMessages(prevMessages => [...prevMessages, "Error: No assessment received"]);
@@ -240,23 +302,25 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen w-screen flex flex-col bg-cover bg-center bg-no-repeat relative overflow-hidden"  style={{backgroundImage: "url('background.png')",  height: '100vh',
+    <div className="min-h-screen w-screen flex flex-col bg-cover bg-center bg-no-repeat relative overflow-hidden"  style={{backgroundImage: "url('mainback.png')",  height: '100vh',
       width: '100vw'}}>
     <div className="flex flex-row justify-between items-center ml-[100px] mt-[54px] mr-[54px]">
     <Component selections={selections} setSelections={setSelections} />
     <AuthButtons />
     </div>
     <div className="flex justify-between flex-grow mt-[48px] relative">
-    <div className="absolute bottom-[180px] left-[-250px] w-[600px] h-[600px]">
+    <div className="w-[533px] h-[72px] bg-[#F7F5ED] ml-[100px] rounded-[100px] flex items-center justify-center">
+            <p className="text-[20px] font-medium text-black text-center px-4">{question}</p>
+          </div>
+        <div className="mt-[-360px] ml-auto mr-[54px] self-center">
+          <ChatHistory messages={messages} />
+        </div>
+</div>
+  <div className="absolute bottom-[180px] left-[-250px] w-[600px] h-[600px]">
       {modelUrl && animationUrl && (
         <ThreeScene modelUrl={modelUrl} animationUrl={animationUrl} animationSpeed={animationSpeed} />
       )}
     </div>
-    
-    <div className="mt-[-360px] ml-auto mr-[54px] self-center">
-    <ChatHistory messages={messages} />
-    </div>
-  </div>
     <div className="absolute bottom-[54px] right-[54px]">
     {/* {audioUrl && (
           <audio controls src={audioUrl} className="mr-4">
