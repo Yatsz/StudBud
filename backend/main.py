@@ -117,6 +117,8 @@ async def transcribe_audio(file: UploadFile = File(...)):
 system_prompt = """
 You are a helpful teaching assitant helping middle school children with their homework assignments however you can never provide an answer. You can only guide the child towards the answer.
 
+Keep your responses friendly and concise like a discussion with a friend. (Maximum of 2 sentences)
+
 Given a math problem below:
 """
 
@@ -131,12 +133,13 @@ async def assess_transcription(request: Request):
             raise HTTPException(status_code=400, detail="Transcription is required")
 
         logger.info(f"Sending assessment request to Baseten LLM model")
+        
         resp = requests.post(
             BASETEN_LLM_URL,
             headers={"Authorization": f"Api-Key {BASETEN_WHISPER_KEY}"},
             json={
                 "messages": [
-                    {"role": "system", "content": {system_prompt}},
+                    {"role": "system", "content": system_prompt},
                     {
                         "role": "user",
                         "content": transcription
