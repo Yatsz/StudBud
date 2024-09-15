@@ -5,6 +5,8 @@ import os
 from dotenv import load_dotenv
 import logging
 import boto3
+import uuid
+from datetime import datetime
 
 # from agent import agent, InitiateChitChatDialogue, ChitChatDialogueMessage
 
@@ -22,7 +24,6 @@ BASETEN_WHISPER_KEY = "zuovp9Vj.7XLa7MeT8JaRbOd0PZsoyaza9wO58JuU"
 load_dotenv()
 
 # BASETEN_WHISPER_KEY = os.getenv("BASETEN_WHISPER_KEY")
-BASETEN_MODEL_URL = "https://model-7wlmmd7q.api.baseten.co/production/predict"
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 
 
@@ -48,16 +49,21 @@ def allowed_file(filename):
 
 @app.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
+    BASETEN_MODEL_URL = "https://model-7wlmmd7q.api.baseten.co/production/predict"
     logger.info(f"Received file upload: {file.filename}")
 
     if not allowed_file(file.filename):
         logger.warning(f"File type not allowed: {file.filename}")
         raise HTTPException(status_code=400, detail="File type not allowed")
 
+    # Generate a unique filename
+    file_extension = file.filename.split(".")[-1]
+    unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.{file_extension}"
+
     # Upload file to S3
     try:
         s3_client = boto3.client("s3")
-        s3_key = f"uploads/{file.filename}"
+        s3_key = f"uploads/{unique_filename}"
 
         # Read the file content
         file_content = await file.read()
@@ -65,7 +71,11 @@ async def transcribe_audio(file: UploadFile = File(...)):
         # Upload to S3
         s3_client.put_object(Body=file_content, Bucket=S3_BUCKET_NAME, Key=s3_key)
 
-        s3_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
+        s3_url = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": S3_BUCKET_NAME, "Key": s3_key},
+            ExpiresIn=3600,
+        )
         logger.info(f"File uploaded to S3: {s3_url}")
     except Exception as e:
         logger.error(f"Error uploading file to S3: {str(e)}")
@@ -75,7 +85,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     # Send async request to Baseten Whisper model
     try:
-        logger.info(f"Sending async request to Baseten Whisper model for S3 URL")
+        logger.info(f"Sending request to Baseten Whisper model for S3 URL")
         resp = requests.post(
             BASETEN_MODEL_URL,
             headers={"Authorization": f"Api-Key {BASETEN_WHISPER_KEY}"},
@@ -88,10 +98,8 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
         return JSONResponse(content={"result": result})  # , "s3_url": s3_url})
     except requests.RequestException as e:
-        logger.error(f"Error sending async request for file {file.filename}: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error sending async request: {str(e)}"
-        )
+        logger.error(f"Error sending  request for file {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending  request: {str(e)}")
 
 
 @app.post("/assess")
