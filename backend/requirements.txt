@@ -3,3 +3,5 @@ requests
 boto3
 ai_engine
 uagents
+python-dotenv
+python-multipart
