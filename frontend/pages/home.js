@@ -161,18 +161,52 @@ export default function Home() {
       }
       
       const result = await response.json();
-      console.log('API response:', result);
-      
-      // Assuming the API returns a transcription in the 'text' field
-      if (result.text) {
-        setMessages(prevMessages => [...prevMessages, result.text]);
+      console.log('API response:', result.result.text);
+      if (result.result.text) {
+        // Update messages state with the new transcription
+        
+        // Call assess endpoint with the transcription
+        await assessTranscription(result.result.text);
+      } else {
+        console.error('No transcription text in API response');
+        setMessages(prevMessages => [...prevMessages, "Error: No transcription received"]);
       }
     } catch (error) {
       console.error('Error sending audio to API:', error);
       setMessages(prevMessages => [...prevMessages, "Error transcribing audio"]);
     }
   };
-
+  
+  const assessTranscription = async (transcription) => {
+    console.log('Sending audio to asessing...');
+    try {
+      const response = await fetch('http://localhost:8000/assess', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transcription }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const result = await response.json();
+      console.log('Assessment response:', result.assessment);
+  
+      if (result.assessment) {
+        // Update messages state with the assessment
+        setMessages(prevMessages => [...prevMessages, `Assessment: ${result.assessment}`]);
+      } else {
+        console.error('No assessment in API response');
+        setMessages(prevMessages => [...prevMessages, "Error: No assessment received"]);
+      }
+    } catch (error) {
+      console.error('Error sending assessment request:', error);
+      setMessages(prevMessages => [...prevMessages, "Error getting assessment"]);
+    }
+  };
 
   // useEffect(() => {
   //   const timer = setInterval(() => {
