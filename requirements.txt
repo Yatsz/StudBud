@@ -1,0 +1,5 @@
+fastapi
+requests
+boto3
+ai_engine
+uagents
