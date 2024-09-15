@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { TextGenerateEffect } from "./ui/text-generate-effect";
 
 const BeaverIcon = () => (
@@ -45,18 +45,39 @@ const BeaverIcon = () => (
 
   );
 
+  const LoadingMessage = () => {
+    const [dots, setDots] = useState('');
+  
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setDots(prevDots => {
+          if (prevDots.length >= 3) return '';
+          return prevDots + '.';
+        });
+      }, 1000);
+  
+      return () => clearInterval(interval);
+    }, []);
+  
+    return <span>{dots}</span>;
+  };
+  
   const Message = ({ message }) => (
     <div className="flex items-start space-x-4 mb-4">
       <div className="flex-shrink-0">
         <BeaverIcon />
       </div>
       <div className="flex-grow mt-[10px]">
-      <TextGenerateEffect words={message} />
+      {message.startsWith('Loading') ? (
+        <LoadingMessage />
+      ) : (
+        <TextGenerateEffect words={message} />
+      )}
       </div>
     </div>
   );
   
-  const ChatHistory = ({ messages }) => {
+  const ChatHistory = ({ messages, isLoading }) => {
     const scrollableRef = useRef(null);
   
     const scrollToBottom = () => {
@@ -78,6 +99,7 @@ const BeaverIcon = () => (
           {messages.map((msg, index) => (
             <Message key={index} message={msg} />
           ))}
+          {isLoading && <Message message="Loading" />}
         </div>
       </div>
     );

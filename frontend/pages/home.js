@@ -155,6 +155,8 @@ export default function Home() {
   const audioChunksRef = useRef([]);
   const [question, setQuestion] = useState('');
   const [conversationContext, setConversationContext] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
 
 
 
@@ -258,8 +260,9 @@ export default function Home() {
   
       if (result.assessment) {
         // Update messages state with the assessment
-        setMessages(prevMessages => [...prevMessages, `Assessment: ${result.assessment}`]);
         setConversationContext(prevContext => prevContext + `Assessment: ${result.assessment}\n\n`);
+
+        await textToVoice(result.assessment);
       } else {
         console.error('No assessment in API response');
         setMessages(prevMessages => [...prevMessages, "Error: No assessment received"]);
@@ -268,6 +271,57 @@ export default function Home() {
       console.error('Error sending assessment request:', error);
       setMessages(prevMessages => [...prevMessages, "Error getting assessment"]);
     }
+  };
+
+  const textToVoice = async (text) => {
+    console.log('Sending text to voice...');
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:8000/text_to_voice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: text }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const result = await response.json();
+      if (result.audio_output) {
+        // Play the audio
+        setMessages(prevMessages => [...prevMessages, `Assessment: ${text}`]);
+        playAudio(result.audio_output);
+      } else {
+        console.error('No audio output in response');
+      }
+    } catch (error) {
+      console.error('Error in text-to-voice conversion:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  
+  
+  const playAudio = (base64Audio) => {
+    console.log('Playing audio...');
+    // Convert base64 to blob
+    const byteCharacters = atob(base64Audio);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'audio/mp3' });
+  
+    // Create audio element and play
+    const audio = new Audio(URL.createObjectURL(blob));
+    audio.play();
   };
 
   // useEffect(() => {
@@ -313,7 +367,7 @@ export default function Home() {
             <p className="text-[20px] font-medium text-black text-center px-4">{question}</p>
           </div>
         <div className="mt-[-360px] ml-auto mr-[54px] self-center">
-          <ChatHistory messages={messages} />
+          <ChatHistory messages={messages} isLoading={isLoading} />
         </div>
 </div>
   <div className="absolute bottom-[180px] left-[-250px] w-[600px] h-[600px]">
